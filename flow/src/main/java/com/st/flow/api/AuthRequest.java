@@ -1,17 +1,10 @@
-package com.st.proof.api;
+package com.st.flow.api;
 
-//This can be in external lib (common) but in to maven commands need add command 'install' to local repo
 public class AuthRequest {
 
     private String cardNumber;
     private String expirationDate;
     private String cvcNumber;
-
-    public AuthRequest(String cardNumber, String expirationDate, String cvcNumber) {
-        this.cardNumber = cardNumber;
-        this.expirationDate = expirationDate;
-        this.cvcNumber = cvcNumber;
-    }
 
     public String getCardNumber() {
         return cardNumber;

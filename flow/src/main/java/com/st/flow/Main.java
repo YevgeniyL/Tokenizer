@@ -3,8 +3,6 @@ package com.st.flow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.crypto.KeyGenerator;
-import javax.crypto.SecretKey;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
@@ -38,7 +36,7 @@ public class Main {
         }
     }
 
-    private static Configuration getProperties(Properties props) throws NoSuchAlgorithmException {
+    private static Configuration getProperties(Properties props) {
         final String redisConfPrefix = "redis.configuration.server.";
         final String kafkaProducerConfPrefix = "kafka.configuration.producer.";
         final String kafkaConsumerConfPrefix = "kafka.configuration.consumer.";
@@ -66,9 +64,6 @@ public class Main {
             }
         }
 
-        KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
-        keyGenerator.init(128);
-        SecretKey secretKey = keyGenerator.generateKey();
-        return new Configuration(redisConfig, producerConfig, consumerConfig, inputTopicName, outputTopicName, secretKey);
+        return new Configuration(redisConfig, producerConfig, consumerConfig, inputTopicName, outputTopicName);
     }
 }

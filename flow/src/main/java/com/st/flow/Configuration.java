@@ -1,6 +1,5 @@
 package com.st.flow;
 
-import javax.crypto.SecretKey;
 import java.util.Properties;
 
 class Configuration {
@@ -9,15 +8,13 @@ class Configuration {
     private Properties consumerProp;
     private String inputTopicName;
     private String outputTopicName;
-    private SecretKey secretKey;
 
-    Configuration(Properties redisServerProp, Properties producerProp, Properties consumerProp, String inputTopicName, String outputTopicName, SecretKey secretKey) {
+    Configuration(Properties redisServerProp, Properties producerProp, Properties consumerProp, String inputTopicName, String outputTopicName) {
         this.redisServerProp = redisServerProp;
         this.producerProp = producerProp;
         this.consumerProp = consumerProp;
         this.inputTopicName = inputTopicName;
         this.outputTopicName = outputTopicName;
-        this.secretKey = secretKey;
     }
 
     Properties getRedisServerProp() {
@@ -38,9 +35,5 @@ class Configuration {
 
     String getOutputTopicName() {
         return outputTopicName;
-    }
-
-    SecretKey getSecretKey() {
-        return secretKey;
     }
 }

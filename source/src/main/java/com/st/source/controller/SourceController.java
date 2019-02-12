@@ -31,7 +31,7 @@ public class SourceController {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    @PostMapping(path = "/api/auth", consumes = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @PostMapping(path = "/api/auth", consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
     private ResponseEntity<AuthResponse> auth(@RequestBody AuthRequest authRequest) {
         //here we can validate 'authRequest' on what we need

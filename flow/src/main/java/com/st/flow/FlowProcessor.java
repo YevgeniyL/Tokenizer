@@ -1,5 +1,8 @@
 package com.st.flow;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.st.flow.api.AuthRequest;
+import com.st.flow.encoders.EncoderAES128;
 import kafka.utils.ShutdownableThread;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -14,26 +17,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 
-import javax.crypto.Cipher;
-import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
+import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.Properties;
 
 public class FlowProcessor extends ShutdownableThread {
     private static final Logger logger = LoggerFactory.getLogger(FlowProcessor.class);
+    private final ObjectMapper mapper = new ObjectMapper();
+    private final Encoder encoder = new EncoderAES128();
+
     private final KafkaConsumer<String, String> consumer;
     private final String inputTopic;
-    private final SecretKey secretKey;
     private final Jedis jedis;
-
     private final KafkaProducer<String, String> producer;
     private final String outputTopic;
 
-    FlowProcessor(Configuration conf) {
+    FlowProcessor(Configuration conf) throws NoSuchAlgorithmException {
         super("FlowProcessor", false);
         Properties consumerProp = conf.getConsumerProp();
         consumerProp.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
@@ -48,20 +50,8 @@ public class FlowProcessor extends ShutdownableThread {
         this.outputTopic = conf.getOutputTopicName();
 
         this.jedis = new Jedis(conf.getRedisServerProp().getProperty("host"), Integer.valueOf(conf.getRedisServerProp().getProperty("port")));
-        this.secretKey = conf.getSecretKey();
     }
 
-    //It can be in external lib, but in to maven commands will need add command 'install' to local repo
-    private static byte[] encryptData(byte[] rawMessage, SecretKey secretKey) {
-        try {
-            Cipher cipher = Cipher.getInstance("AES");
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey);
-            return cipher.doFinal(rawMessage);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
 
     @Override
     public void doWork() {
@@ -71,22 +61,32 @@ public class FlowProcessor extends ShutdownableThread {
         for (ConsumerRecord<String, String> record : records) {
             String transactionId = record.key();
             String jsonData = record.value();
-
             if (transactionId == null || jsonData == null) {
                 logger.info("Wrong data " + transactionId == null ? " - empty transactionId." : "for transactionId = " + transactionId);
                 continue;
             }
-
             logger.info(LocalDateTime.now() + ". From '" + inputTopic + "' topic received message with transactionId: " + transactionId);
+
+            AuthRequest authRequest = null;
             try {
-                jedis.set(transactionId, Base64.getEncoder().withoutPadding().encodeToString(secretKey.getEncoded()));
-                byte[] tokenInAes = encryptData(jsonData.getBytes(StandardCharsets.UTF_8), secretKey);
-                String tokenAesInString = Base64.getEncoder().withoutPadding().encodeToString(tokenInAes);
-                producer.send(new ProducerRecord<>(outputTopic, transactionId, tokenAesInString));
-                logger.info(LocalDateTime.now() + ". To '" + outputTopic + "' topic sended message with transactionId: " + transactionId);
-            } catch (Exception e) {
-                logger.error(LocalDateTime.now() + ". Exception on work data: ", e);
+                authRequest = mapper.readValue(jsonData, AuthRequest.class);
+            } catch (IOException e) {
+                logger.error(LocalDateTime.now() + ". Deserialize json data to object exception", e);
+                continue;
             }
+
+            Encoder.CardData cardData = new Encoder.CardData(authRequest.getCardNumber(), authRequest.getExpirationDate(), authRequest.getCvcNumber());
+            Encoder.Data result = null;
+            try {
+                result = encoder.encode(cardData);
+            } catch (Exception e) {
+                logger.error(LocalDateTime.now() + ". Encode data exception", e);
+                continue;
+            }
+
+            jedis.set(transactionId, result.getSecretKey());
+            producer.send(new ProducerRecord<>(outputTopic, transactionId, result.getToken()));
+            logger.info(LocalDateTime.now() + ". To '" + outputTopic + "' topic sended message with transactionId: " + transactionId);
         }
     }
 
