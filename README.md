@@ -7,7 +7,7 @@
 
 **Acceptance criteria:**
 
-###Data Source (API Layer, module #1):
+### Data Source (API Layer, module #1):
 -	Client sends HTTP request to payment processor tokenizer (application/json':{"cardNumber": "400734534535000000027",....)
 -	Application produces JSON to KAFKA INPUT topic
 -	Application returns HTTP response:
